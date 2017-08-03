@@ -1,33 +1,16 @@
 #include <Windows.h>
 #include <gl/GL.h>
+#include <gl/GLU.h>
+
+#define _USE_MATH_DEFINES
+#include "math.h"
 
 #define WIN_WIDTH  800
 #define WIN_HEIGHT 600
 
-
 #pragma comment(lib,"opengl32.lib")
+#pragma comment(lib,"glu32.lib")
 
-GLint gCountOfBlocks = 10;
-GLfloat gblockSize = 0.008;
-bool gupKey = false;
-
-GLfloat snakePathX = gblockSize/2.0f;
-GLfloat snakePathY = 0.0f;
-GLfloat snakePathZ = 0.0f;
-
-// Function for drawing filled triangle
-// This function only  draws the triangle doesn't change color
-void DrawSnake(GLfloat point1X, GLfloat point1Y, GLfloat point1Z, GLint countOfBlocks, GLfloat blockSize)
-{
-	glBegin(GL_LINE_LOOP);
-	{
-		for (int i = 0; i < countOfBlocks; i++)
-		{
-			glVertex3f(point1X + (i*blockSize), point1Y, point1Z);
-		}
-		
-	}glEnd();
-}
 
 //Prototype Of WndProc() declared Globally
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
@@ -43,9 +26,78 @@ WINDOWPLACEMENT wpPrev = { sizeof(WINDOWPLACEMENT) };
 bool gbActiveWindow = false;
 bool gbEscapeKeyIsPressed = false;
 bool gbFullScreen = false;
+float gAngle = 0.0f;
+
+//Declaring Matrices here
+GLfloat IdentityMatrix [16];
+GLfloat TranslationMatrix [16];
+GLfloat ScaleMatrix [16];
+
+GLfloat RotateMatrixX [16];
+GLfloat RotateMatrixY [16];
+GLfloat RotateMatrixZ [16];
+
+//Draw Function
+void Update()
+{
+	gAngle += 1.0f; //increament in degree
+
+	if (gAngle > 360)
+	{
+		gAngle = 0.0f;
+	}
+}
+
+void DrawCube()
+{
+	glBegin(GL_QUADS);
+	{
+		//Front Face
+		glColor3f(1.0f, 0.0f, 0.0f);
+		glVertex3f(-1.0f, 1.0f, 1.0f); //top Left front
+		glVertex3f(-1.0f, -1.0f, 1.0f); //bottom Left front
+		glVertex3f(1.0f, -1.0f, 1.0f); //bottom Right front
+		glVertex3f(1.0f, 1.0f, 1.0f); //top Right front
+
+        //Back Face -- make Z negative of front face
+		glColor3f(0.0f, 1.0f, 0.0f);
+		glVertex3f(-1.0f, 1.0f, -1.0f); 
+		glVertex3f(-1.0f, -1.0f, -1.0f); 
+		glVertex3f(1.0f, -1.0f, -1.0f); 
+		glVertex3f(1.0f, 1.0f, -1.0f); 
+
+		//Left Face
+		glColor3f(0.0f, 0.0f, 1.0f);
+		glVertex3f(-1.0f, 1.0f, -1.0f); //top Left back
+		glVertex3f(-1.0f, -1.0f, -1.0f); //bottom Left back
+		glVertex3f(-1.0f, -1.0f, 1.0f); //bottom Left front
+		glVertex3f(-1.0f, 1.0f, 1.0f); //top Left front
+	     
+        //Right Face
+		glColor3f(1.0f, 0.0f, 1.0f);
+		glVertex3f(1.0f, 1.0f, -1.0f); 
+		glVertex3f(1.0f, -1.0f, -1.0f); 
+		glVertex3f(1.0f, -1.0f, 1.0f); 
+		glVertex3f(1.0f, 1.0f, 1.0f); 
+		
+		//Top Face
+		glColor3f(0.0f, 1.0f, 1.0f);
+		glVertex3f(1.0f, 1.0f, 1.0f); //top Right front
+		glVertex3f(1.0f, 1.0f, -1.0f); //top Right back
+		glVertex3f(-1.0f, 1.0f, -1.0f); //top Left back
+		glVertex3f(-1.0f, 1.0f, 1.0f); //top Left front
+		
+		//Bottom Face
+		glColor3f(1.0f, 1.0f, 0.0f);
+		glVertex3f(1.0f, -1.0f, 1.0f); 
+		glVertex3f(1.0f, -1.0f, -1.0f); 
+		glVertex3f(-1.0f, -1.0f, -1.0f);
+		glVertex3f(-1.0f, -1.0f, 1.0f); 
+		
+	}glEnd();
+}
 
 //Main()
-
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLine, int iCmdShow)
 {
 	//Function Prototype
@@ -83,7 +135,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLi
 	//Create Window
 	hwnd = CreateWindowEx(WS_EX_APPWINDOW,
 		szClassName,
-		TEXT("Testing graphics functionality"),
+		TEXT("OpenGL Fixed Function Pipeline using Native Windowing "),
 		WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_VISIBLE,
 		600,
 		0,
@@ -122,6 +174,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLi
 			{
 				if (gbEscapeKeyIsPressed == true)
 					bDone = true;
+				Update();
 				display();
 			}
 		}
@@ -183,10 +236,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT imsg, WPARAM wParam, LPARAM lparam)
 				gbFullScreen = false;
 			}
 			break;
-
-		case VK_UP:
-			 gupKey = true;
-			 break;
 		default:
 			break;
 		}
@@ -215,7 +264,7 @@ void ToggleFullScreen(void)
 		dwStyle = GetWindowLong(ghwnd, GWL_STYLE);
 		if (dwStyle & WS_OVERLAPPEDWINDOW)
 		{
-			mi.cbSize = sizeof(MONITORINFO);
+			mi.cbSize =  sizeof(MONITORINFO) ;
 
 			if (GetWindowPlacement(ghwnd, &wpPrev) && GetMonitorInfo(MonitorFromWindow(ghwnd, MONITORINFOF_PRIMARY), &mi))
 			{
@@ -238,6 +287,68 @@ void ToggleFullScreen(void)
 
 void initialize(void)
 {
+	//Initialize the matrices
+	IdentityMatrix [0] = 1.0f;
+	IdentityMatrix [1] = 0.0f;
+	IdentityMatrix [2] = 0.0f;
+	IdentityMatrix [3] = 0.0f;
+
+	IdentityMatrix [4] = 0.0f;
+	IdentityMatrix [5] = 1.0f;
+	IdentityMatrix [6] = 0.0f;
+	IdentityMatrix [7] = 0.0f;
+
+	IdentityMatrix [8] = 0.0f;
+	IdentityMatrix [9] = 0.0f;
+	IdentityMatrix [10]= 1.0f;
+	IdentityMatrix [11]= 0.0f;
+
+	IdentityMatrix [12]= 0.0f;
+	IdentityMatrix [13]= 0.0f;
+	IdentityMatrix [14]= 0.0f;
+	IdentityMatrix [15]= 1.0f;
+
+
+    ScaleMatrix [0] = 0.75f;
+	ScaleMatrix [1] = 0.0f;
+	ScaleMatrix [2] = 0.0f;
+	ScaleMatrix [3] = 0.0f;
+
+	ScaleMatrix [4] = 0.0f;
+	ScaleMatrix [5] = 0.75f;
+	ScaleMatrix [6] = 0.0f;
+	ScaleMatrix [7] = 0.0f;
+					   
+	ScaleMatrix [8] = 0.0f;
+	ScaleMatrix [9] = 0.0f;
+	ScaleMatrix [10]= 0.75f;
+	ScaleMatrix [11]= 0.0f;
+					   
+	ScaleMatrix [12]= 0.0f;
+	ScaleMatrix [13]= 0.0f;
+	ScaleMatrix [14]= 0.0f;
+	ScaleMatrix [15]= 1.0f;
+
+	TranslationMatrix [0] = 1.0f;
+	TranslationMatrix [1] = 0.0f;
+	TranslationMatrix [2] = 0.0f;
+	TranslationMatrix [3] = 0.0f;
+							 
+	TranslationMatrix [4] = 0.0f;
+	TranslationMatrix [5] = 1.0f;
+	TranslationMatrix [6] = 0.0f;
+	TranslationMatrix [7] = 0.0f;
+							 
+	TranslationMatrix [8] = 0.0f;
+	TranslationMatrix [9] = 0.0f;
+	TranslationMatrix [10]= 1.0f;
+	TranslationMatrix [11]= 0.0f;
+							 
+	TranslationMatrix [12]= 0.0f;
+	TranslationMatrix [13]= 0.0f;
+	TranslationMatrix [14]= -6.0f;
+	TranslationMatrix [15]= 1.0f;
+
 	//function prototypes
 	void resize(int, int);
 
@@ -259,6 +370,7 @@ void initialize(void)
 	pfd.cBlueBits = 8;
 	pfd.cGreenBits = 8;
 	pfd.cAlphaBits = 8;
+	pfd.cDepthBits = 32; //Changes for 3D window
 
 	ghdc = GetDC(ghwnd);
 
@@ -291,34 +403,98 @@ void initialize(void)
 		ghdc = NULL;
 	}
 
+	glClearDepth(1.0f);
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LEQUAL);
+
 	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 
-	//resize(WIN_WIDTH, WIN_HEIGHT);
+
+	resize(WIN_WIDTH, WIN_HEIGHT);
 }
 
 void display(void)
 {
-	//code 
-	glClear(GL_COLOR_BUFFER_BIT);
+	GLfloat angleRadian = gAngle *(M_PI /180);
 
-	glMatrixMode(GL_MODELVIEW);
-	//glLoadIdentity();
+	RotateMatrixX [0] = 1.0f;
+	RotateMatrixX [1] = 0.0f;
+	RotateMatrixX [2] = 0.0f;
+	RotateMatrixX [3] = 0.0f;
+		 
+	RotateMatrixX [4] = 0.0f;
+	RotateMatrixX [5] = cos(angleRadian);
+	RotateMatrixX [6] = sin(angleRadian);
+	RotateMatrixX [7] = 0.0f;
+		 
+	RotateMatrixX [8] = 0.0f;
+	RotateMatrixX [9] = -sin(angleRadian);
+	RotateMatrixX [10]= cos(angleRadian);
+	RotateMatrixX [11]= 0.0f;
+	
+	RotateMatrixX [12]= 0.0f;
+	RotateMatrixX [13]= 0.0f;
+	RotateMatrixX [14]= 0.0f;
+	RotateMatrixX [15]= 1.0f;
+	
+	
+	RotateMatrixY [0] = cos(angleRadian);
+	RotateMatrixY [1] = 0.0f;
+	RotateMatrixY [2] = sin(angleRadian);
+	RotateMatrixY [3] = 0.0f;
+	 		
+	RotateMatrixY [4] = 0.0f;
+	RotateMatrixY [5] = 1.0f;
+	RotateMatrixY [6] = 0.0f;
+	RotateMatrixY [7] = 0.0f;
+		 		
+	RotateMatrixY [8] = -sin(angleRadian);
+	RotateMatrixY [9] = 0.0f;
+	RotateMatrixY [10]= cos(angleRadian);
+	RotateMatrixY [11]= 0.0f;
+			 	
+	RotateMatrixY [12]= 0.0f;
+	RotateMatrixY [13]= 0.0f;
+	RotateMatrixY [14]= 0.0f;
+	RotateMatrixY [15]= 1.0f;
+	
+	RotateMatrixZ [0] = cos(angleRadian);
+	RotateMatrixZ [1] = sin(angleRadian);
+	RotateMatrixZ [2] = 0.0f;
+	RotateMatrixZ [3] = 0.0f;
+			 	
+	RotateMatrixZ [4] = -sin(angleRadian);
+	RotateMatrixZ [5] = cos(angleRadian);
+	RotateMatrixZ [6] = 0.0f;
+	RotateMatrixZ [7] = 0.0f;
+		 
+	RotateMatrixZ [8] = 0.0f;
+	RotateMatrixZ [9] = 0.0f;
+	RotateMatrixZ [10]= 1.0f;
+	RotateMatrixZ [11]= 0.0f;
+	 
+	RotateMatrixZ [12]= 0.0f;
+	RotateMatrixZ [13]= 0.0f;
+	RotateMatrixZ [14]= 0.0f;
+	RotateMatrixZ [15]= 1.0f;
+
+
+	//code 
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	//Rendering Command
+	glMatrixMode(GL_MODELVIEW);
+	glLoadMatrixf(IdentityMatrix);   //glLoadIdentity();
 
-	if(gupKey)
-	{
-		glTranslatef(snakePathX, snakePathY, snakePathZ);
-		//glRotatef(90.0f, 0.0f, 0.0f,1.0f);
-		//snakePathX =0.0f; snakePathY = gblockSize/2.0f; snakePathZ = 0.0f;
-		gupKey = false;
-	}
+	glMultMatrixf(TranslationMatrix); //glTranslatef(0.0f, 0.0f, -6.0f);
+	  
+	glMultMatrixf(ScaleMatrix);
 
-	glLineWidth(3.0f);
+	glMultMatrixf(RotateMatrixX); //glRotatef(gAngle, 1, 1, 1);
+	glMultMatrixf(RotateMatrixY); //glRotatef(gAngle, 1, 1, 1);
+	glMultMatrixf(RotateMatrixZ); //glRotatef(gAngle, 1, 1, 1);
+	DrawCube();
 
-	DrawSnake(-0.5f, -0.5f, 0.0f,gCountOfBlocks, gblockSize);
-
-	
 	//glFlush(); -- Commented single buffer api
 	SwapBuffers(ghdc);
 }
@@ -331,9 +507,9 @@ void resize(int width, int height)
 
 	glViewport(0, 0, (GLsizei)width, (GLsizei)height);
 
-	/*glMatrixMode(GL_PROJECTION);
+	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	glFrustum(-1.0, 1.0, -1.0, 1.0, 0.0, 1000);*/
+	gluPerspective(45, ((GLfloat)width / (GLfloat)height), 0.1, 100.0);
 }
 
 void uninitialize()
